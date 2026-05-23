@@ -1,0 +1,23 @@
+running egg_info
+writing ../build/turtle_draw_pkg/turtle_draw_pkg.egg-info/PKG-INFO
+writing dependency_links to ../build/turtle_draw_pkg/turtle_draw_pkg.egg-info/dependency_links.txt
+writing entry points to ../build/turtle_draw_pkg/turtle_draw_pkg.egg-info/entry_points.txt
+writing requirements to ../build/turtle_draw_pkg/turtle_draw_pkg.egg-info/requires.txt
+writing top-level names to ../build/turtle_draw_pkg/turtle_draw_pkg.egg-info/top_level.txt
+reading manifest file '../build/turtle_draw_pkg/turtle_draw_pkg.egg-info/SOURCES.txt'
+writing manifest file '../build/turtle_draw_pkg/turtle_draw_pkg.egg-info/SOURCES.txt'
+running build
+running build_py
+copying turtle_draw_pkg/__init__.py -> /home/lorena/ponderada-ROS/build/turtle_draw_pkg/build/lib/turtle_draw_pkg
+copying turtle_draw_pkg/draw_node.py -> /home/lorena/ponderada-ROS/build/turtle_draw_pkg/build/lib/turtle_draw_pkg
+running install
+running install_lib
+running install_data
+copying resource/turtle_draw_pkg -> /home/lorena/ponderada-ROS/install/turtle_draw_pkg/share/ament_index/resource_index/packages
+copying package.xml -> /home/lorena/ponderada-ROS/install/turtle_draw_pkg/share/turtle_draw_pkg
+running install_egg_info
+removing '/home/lorena/ponderada-ROS/install/turtle_draw_pkg/lib/python3.11/site-packages/turtle_draw_pkg-0.0.0-py3.11.egg-info' (and everything under it)
+Copying ../build/turtle_draw_pkg/turtle_draw_pkg.egg-info to /home/lorena/ponderada-ROS/install/turtle_draw_pkg/lib/python3.11/site-packages/turtle_draw_pkg-0.0.0-py3.11.egg-info
+running install_scripts
+Installing draw_node script to /home/lorena/ponderada-ROS/install/turtle_draw_pkg/lib/turtle_draw_pkg
+writing list of installed files to '/home/lorena/ponderada-ROS/build/turtle_draw_pkg/install.log'

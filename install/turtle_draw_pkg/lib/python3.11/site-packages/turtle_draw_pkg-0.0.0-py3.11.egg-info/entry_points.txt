@@ -1,0 +1,2 @@
+[console_scripts]
+draw_node = turtle_draw_pkg.draw_node:main

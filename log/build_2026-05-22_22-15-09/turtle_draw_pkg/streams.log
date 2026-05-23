@@ -1,0 +1,21 @@
+[0.540s] Invoking command in '/home/lorena/ponderada-ROS/turtle_draw_pkg': DEBUGINFOD_URLS=https://debuginfod.archlinux.org PYTHONPATH=/home/lorena/ponderada-ROS/build/turtle_draw_pkg/prefix_override:/home/lorena/.local/share/mamba/envs/ros2-humble/lib/python3.11/site-packages/colcon_core/task/python/colcon_distutils_commands:/home/lorena/ponderada-ROS/install/turtle_draw_pkg/lib/python3.11/site-packages:${PYTHONPATH} _=/usr/bin/env /home/lorena/.local/share/mamba/envs/ros2-humble/bin/python3.11 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../build/turtle_draw_pkg build --build-base /home/lorena/ponderada-ROS/build/turtle_draw_pkg/build install --record /home/lorena/ponderada-ROS/build/turtle_draw_pkg/install.log --single-version-externally-managed install_data
+[0.720s] running egg_info
+[0.728s] writing ../build/turtle_draw_pkg/turtle_draw_pkg.egg-info/PKG-INFO
+[0.729s] writing dependency_links to ../build/turtle_draw_pkg/turtle_draw_pkg.egg-info/dependency_links.txt
+[0.729s] writing entry points to ../build/turtle_draw_pkg/turtle_draw_pkg.egg-info/entry_points.txt
+[0.730s] writing requirements to ../build/turtle_draw_pkg/turtle_draw_pkg.egg-info/requires.txt
+[0.731s] writing top-level names to ../build/turtle_draw_pkg/turtle_draw_pkg.egg-info/top_level.txt
+[0.736s] reading manifest file '../build/turtle_draw_pkg/turtle_draw_pkg.egg-info/SOURCES.txt'
+[0.738s] writing manifest file '../build/turtle_draw_pkg/turtle_draw_pkg.egg-info/SOURCES.txt'
+[0.738s] running build
+[0.738s] running install
+[0.744s] running install_data
+[0.745s] copying resource/turtle_draw_pkg -> /home/lorena/ponderada-ROS/install/turtle_draw_pkg/share/ament_index/resource_index/packages
+[0.746s] copying package.xml -> /home/lorena/ponderada-ROS/install/turtle_draw_pkg/share/turtle_draw_pkg
+[0.746s] running install_egg_info
+[0.768s] removing '/home/lorena/ponderada-ROS/install/turtle_draw_pkg/lib/python3.11/site-packages/turtle_draw_pkg-0.0.0-py3.11.egg-info' (and everything under it)
+[0.769s] Copying ../build/turtle_draw_pkg/turtle_draw_pkg.egg-info to /home/lorena/ponderada-ROS/install/turtle_draw_pkg/lib/python3.11/site-packages/turtle_draw_pkg-0.0.0-py3.11.egg-info
+[0.769s] running install_scripts
+[0.835s] Installing draw_node script to /home/lorena/ponderada-ROS/install/turtle_draw_pkg/lib/turtle_draw_pkg
+[0.835s] writing list of installed files to '/home/lorena/ponderada-ROS/build/turtle_draw_pkg/install.log'
+[0.857s] Invoked command in '/home/lorena/ponderada-ROS/turtle_draw_pkg' returned '0': DEBUGINFOD_URLS=https://debuginfod.archlinux.org PYTHONPATH=/home/lorena/ponderada-ROS/build/turtle_draw_pkg/prefix_override:/home/lorena/.local/share/mamba/envs/ros2-humble/lib/python3.11/site-packages/colcon_core/task/python/colcon_distutils_commands:/home/lorena/ponderada-ROS/install/turtle_draw_pkg/lib/python3.11/site-packages:${PYTHONPATH} _=/usr/bin/env /home/lorena/.local/share/mamba/envs/ros2-humble/bin/python3.11 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../build/turtle_draw_pkg build --build-base /home/lorena/ponderada-ROS/build/turtle_draw_pkg/build install --record /home/lorena/ponderada-ROS/build/turtle_draw_pkg/install.log --single-version-externally-managed install_data
