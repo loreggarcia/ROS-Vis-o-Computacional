@@ -1,10 +1,9 @@
 """Pipeline de visao do Turtle Draw.
 
 Consome a imagem final de bordas ja exportada pelo notebook
-(`edges_final.png`) e gera caminhos seguindo os pixels ativos da imagem.
+(`edges_final.png`) e gera caminhos que se aproximam do grafico de
+coordenadas logicas mostrado no notebook.
 """
-
-from __future__ import annotations
 
 from typing import List, Sequence, Tuple
 
@@ -18,8 +17,8 @@ Segmento = List[Ponto]
 
 def gerar_caminho_a_partir_da_imagem(
     caminho_imagem: str,
-    tamanho_minimo_componente: int = 1,
-    manter_maiores_componentes: int = 10000,
+    tamanho_minimo_componente: int = 2,
+    manter_maiores_componentes: int = 500,
     distancia_minima_entre_pontos: float = 1.0,
     tamanho_kernel: int = 3,
     sigma: float = 1.4,
@@ -31,25 +30,43 @@ def gerar_caminho_a_partir_da_imagem(
     tamanho_mundo: float = 11.0,
     margem: float = 1.0,
 ) -> Tuple[List[Segmento], np.ndarray]:
-    """Carrega bordas pre-calculadas e retorna segmentos para o Turtlesim."""
+    # Transforma a imagem de bordas em segmentos desenhaveis.
+    # Entrada: imagem binaria exportada pelo notebook.
+    # Saida: segmentos em coordenadas do mundo e a imagem binaria ja limpa.
 
+    # Esses parametros eram usados em uma versao anterior da pipeline.
     del tamanho_kernel, sigma, limiar_baixo, limiar_alto
-    del manter_maiores_componentes, tamanho_mundo, margem
+    del tamanho_mundo, margem, salto_maximo
 
+    # 1) Le a imagem exportada pelo notebook e garante formato binario.
     bordas_binarias = _carregar_bordas(caminho_imagem)
-    bordas_binarias = _remover_moldura_externa(
-        bordas_binarias,
-        margem=max(1, margem_remocao_borda),
-    )
-    segmentos_pixels = _rastrear_pixels_ativos(
+    if margem_remocao_borda > 0:
+        # 2) Remove artefatos grudados na borda da imagem.
+        bordas_binarias = _remover_moldura_externa(
+            bordas_binarias,
+            margem=max(1, margem_remocao_borda),
+        )
+
+    # 3) Descarta componentes muito pequenos para reduzir ruido.
+    bordas_binarias = _filtrar_componentes(
         bordas_binarias,
         tamanho_minimo_componente=tamanho_minimo_componente,
-        distancia_minima_entre_pontos=distancia_minima_entre_pontos,
-        salto_maximo=salto_maximo,
-        pontos_minimos_por_segmento=pontos_minimos_por_segmento,
+        manter_maiores_componentes=manter_maiores_componentes,
     )
 
+    # 4) Fecha pequenas falhas para transformar bordas finas em contornos mais continuos.
+    bordas_binarias = _conectar_bordas(bordas_binarias)
+
+    # 5) Extrai contornos continuos da imagem para formar trajetorias desenhaveis.
+    segmentos_pixels = _segmentos_por_contorno(
+        bordas_binarias,
+        distancia_minima_entre_pontos=distancia_minima_entre_pontos,
+        pontos_minimos_por_segmento=pontos_minimos_por_segmento,
+    )
+    segmentos_pixels = _ordenar_segmentos_para_desenho(segmentos_pixels)
+
     altura, largura = bordas_binarias.shape
+    # 6) Mapeia coordenadas de pixel para o sistema de coordenadas do Turtlesim.
     segmentos_mundo = _mapear_para_turtlesim(
         segmentos_pixels,
         altura_imagem=altura,
@@ -59,13 +76,11 @@ def gerar_caminho_a_partir_da_imagem(
     return segmentos_mundo, bordas_binarias
 
 
-# ---------------------------------------------------------------------------
-# Funcoes internas
-# ---------------------------------------------------------------------------
 
 def _carregar_bordas(caminho: str) -> np.ndarray:
     """Carrega a imagem de bordas e retorna como uint8 binario (0 ou 1)."""
 
+    # Le a imagem exatamente como foi salva no notebook.
     img = cv2.imread(caminho, cv2.IMREAD_UNCHANGED)
     if img is None:
         raise FileNotFoundError(
@@ -78,6 +93,7 @@ def _carregar_bordas(caminho: str) -> np.ndarray:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     # Binariza: qualquer pixel nao-zero vira 1
+    # Isso simplifica o restante do pipeline para trabalhar so com fundo e borda.
     _, binaria = cv2.threshold(img, 0, 1, cv2.THRESH_BINARY)
     return binaria.astype(np.uint8)
 
@@ -86,6 +102,7 @@ def _remover_moldura_externa(bordas: np.ndarray, margem: int) -> np.ndarray:
     """Remove artefatos de moldura colados nas bordas da imagem."""
 
     resultado = bordas.copy()
+    # Limita a margem para nao apagar uma parte excessiva do desenho.
     margem = min(margem, max(1, min(resultado.shape) // 4))
     resultado[:margem, :] = 0
     resultado[-margem:, :] = 0
@@ -94,50 +111,172 @@ def _remover_moldura_externa(bordas: np.ndarray, margem: int) -> np.ndarray:
     return resultado
 
 
-def _rastrear_pixels_ativos(
+def _segmentos_por_varredura(
     bordas: np.ndarray,
-    tamanho_minimo_componente: int,
     distancia_minima_entre_pontos: float,
-    salto_maximo: int,
     pontos_minimos_por_segmento: int,
 ) -> List[List[Pixel]]:
-    """Rastreia os pixels ativos de cima para baixo com conectividade 8."""
+    """Varre a imagem linha a linha para refletir o grafico do notebook.
 
-    visitados = np.zeros_like(bordas, dtype=bool)
-    ativos = np.argwhere(bordas > 0)
-    if len(ativos) == 0:
-        return []
+    Cada trecho horizontal contiguo de pixels ativos vira um segmento.
+    Isso evita ligacoes artificiais entre regioes distantes e produz um
+    caminho muito mais parecido com o scatter plot do notebook.
+    """
 
+    # Aqui a imagem deixa de ser tratada como matriz e passa a ser tratada como tracos.
     segmentos: List[List[Pixel]] = []
-    limite_reducao2 = max(distancia_minima_entre_pontos, 1.0) ** 2
-    limite_salto2 = max(salto_maximo, 1) ** 2
-    componentes = _rotular_componentes(bordas)
 
-    componentes = [c for c in componentes if len(c) >= max(1, tamanho_minimo_componente)]
-    componentes.sort(key=_chave_componente)
+    # Percorre linha por linha para reproduzir a logica de varredura usada no notebook.
+    for linha in range(bordas.shape[0]):
+        colunas_ativas = np.where(bordas[linha] > 0)[0]
+        if len(colunas_ativas) == 0:
+            continue
 
-    for componente in componentes:
-        while True:
-            inicio = _proximo_pixel_superior_do_componente(componente, visitados)
-            if inicio is None:
-                break
-
-            segmento = _seguir_traco(inicio, bordas, visitados, limite_salto2)
-            if len(segmento) < max(tamanho_minimo_componente, pontos_minimos_por_segmento):
+        # Inicia um segmento com o primeiro pixel ativo da linha.
+        atual: List[Pixel] = [(linha, int(colunas_ativas[0]))]
+        for coluna in colunas_ativas[1:]:
+            if int(coluna) == atual[-1][1] + 1:
+                # Se o pixel atual encosta no anterior, ele faz parte do mesmo traco.
+                atual.append((linha, int(coluna)))
                 continue
 
-            segmento_reduzido = _reduzir_rastro(segmento, limite_reducao2)
-            subsegmentos = _quebrar_saltos_estritos(
-                segmento_reduzido,
-                tamanho_minimo=max(2, pontos_minimos_por_segmento),
+            # Quando ha uma quebra, fecha o segmento atual e inicia outro.
+            segmentos.extend(
+                _finalizar_segmento_varrido(
+                    atual,
+                    distancia_minima_entre_pontos=distancia_minima_entre_pontos,
+                    pontos_minimos_por_segmento=pontos_minimos_por_segmento,
+                )
             )
-            segmentos.extend(subsegmentos)
+            atual = [(linha, int(coluna))]
+
+        segmentos.extend(
+            _finalizar_segmento_varrido(
+                atual,
+                distancia_minima_entre_pontos=distancia_minima_entre_pontos,
+                pontos_minimos_por_segmento=pontos_minimos_por_segmento,
+            )
+        )
 
     return segmentos
 
 
+def _segmentos_por_contorno(
+    bordas: np.ndarray,
+    distancia_minima_entre_pontos: float,
+    pontos_minimos_por_segmento: int,
+) -> List[List[Pixel]]:
+    """Extrai contornos reais da imagem para evitar tracos soltos por varredura."""
+
+    # O OpenCV espera uma imagem 0/255 para detectar contornos.
+    mascara = (bordas * 255).astype(np.uint8)
+    contornos, _ = cv2.findContours(
+        mascara,
+        # Mantem todos os contornos para percorrer o desenho completo.
+        cv2.RETR_LIST,
+        cv2.CHAIN_APPROX_NONE,
+    )
+
+    segmentos: List[List[Pixel]] = []
+    for contorno in contornos:
+        if len(contorno) == 0:
+            continue
+
+        # findContours retorna pontos como (x, y); aqui convertemos para (linha, coluna).
+        segmento = [
+            (int(ponto[0][1]), int(ponto[0][0]))
+            for ponto in contorno
+        ]
+        segmento = _normalizar_inicio_segmento(segmento)
+        segmentos.extend(
+            _finalizar_segmento_varrido(
+                segmento,
+                distancia_minima_entre_pontos=distancia_minima_entre_pontos,
+                pontos_minimos_por_segmento=pontos_minimos_por_segmento,
+            )
+        )
+
+    return segmentos
+
+
+def _conectar_bordas(bordas: np.ndarray) -> np.ndarray:
+    """Fecha pequenas falhas e reforca tracos muito finos."""
+
+    mascara = (bordas * 255).astype(np.uint8)
+    kernel = np.ones((3, 3), dtype=np.uint8)
+    fechada = cv2.morphologyEx(mascara, cv2.MORPH_CLOSE, kernel, iterations=1)
+    reforcada = cv2.dilate(fechada, kernel, iterations=1)
+    return (reforcada > 0).astype(np.uint8)
+
+
+def _normalizar_inicio_segmento(segmento: Sequence[Pixel]) -> List[Pixel]:
+    """Faz cada segmento comecar no ponto mais alto e mais a esquerda."""
+
+    if not segmento:
+        return []
+
+    melhor_indice = min(
+        range(len(segmento)),
+        key=lambda indice: (segmento[indice][0], segmento[indice][1]),
+    )
+    segmento_ordenado = list(segmento[melhor_indice:]) + list(segmento[:melhor_indice])
+
+    # Escolhe a direcao cujo segundo ponto fica mais acima e mais a esquerda.
+    if len(segmento_ordenado) >= 3:
+        proximo = segmento_ordenado[1]
+        anterior = segmento_ordenado[-1]
+        if (anterior[0], anterior[1]) < (proximo[0], proximo[1]):
+            ponto_inicial = segmento_ordenado[0]
+            miolo_invertido = list(reversed(segmento_ordenado[1:]))
+            segmento_ordenado = [ponto_inicial] + miolo_invertido
+
+    return segmento_ordenado
+
+
+def _ordenar_segmentos_para_desenho(segmentos: List[List[Pixel]]) -> List[List[Pixel]]:
+    """Ordena segmentos de cima para baixo e da esquerda para a direita."""
+
+    return sorted(
+        segmentos,
+        key=lambda segmento: (
+            min(linha for linha, _ in segmento),
+            min(coluna for _, coluna in segmento),
+            len(segmento),
+        ),
+    )
+
+
+def _filtrar_componentes(
+    bordas: np.ndarray,
+    tamanho_minimo_componente: int,
+    manter_maiores_componentes: int | None,
+) -> np.ndarray:
+    """Mantem apenas componentes conectados relevantes da imagem binaria."""
+
+    # Agrupa pixels conectados para separar tracos reais de ruido isolado.
+    componentes = _rotular_componentes(bordas)
+    componentes_validos = [
+        componente
+        for componente in componentes
+        if len(componente) >= max(1, tamanho_minimo_componente)
+    ]
+    componentes_validos.sort(key=len, reverse=True)
+
+    if manter_maiores_componentes is not None and manter_maiores_componentes > 0:
+        # Mantem so os maiores grupos de pixels, descartando detalhes pequenos.
+        componentes_validos = componentes_validos[:manter_maiores_componentes]
+
+    filtrada = np.zeros_like(bordas, dtype=np.uint8)
+    for componente in componentes_validos:
+        # Reconstrui a imagem somente com os componentes aprovados.
+        for linha, coluna in componente:
+            filtrada[linha, coluna] = 1
+
+    return filtrada
+
+
 def _rotular_componentes(bordas: np.ndarray) -> List[List[Pixel]]:
-    """Separa pixels ativos em componentes 8-conectados."""
+    """Separa componentes 8-conectados para remover ruído isolado."""
 
     altura, largura = bordas.shape
     visitados = np.zeros_like(bordas, dtype=bool)
@@ -153,135 +292,56 @@ def _rotular_componentes(bordas: np.ndarray) -> List[List[Pixel]]:
             componente: List[Pixel] = []
             indice = 0
 
+            # BFS: parte de um pixel ativo e visita todos os vizinhos conectados.
             while indice < len(fila):
-                atual = fila[indice]
+                atual_linha, atual_coluna = fila[indice]
                 indice += 1
-                componente.append(atual)
+                componente.append((atual_linha, atual_coluna))
 
+                # Busca os 8 vizinhos do pixel atual para montar um componente conectado.
                 for delta_linha in (-1, 0, 1):
                     for delta_coluna in (-1, 0, 1):
                         if delta_linha == 0 and delta_coluna == 0:
                             continue
 
-                        nova_linha = atual[0] + delta_linha
-                        nova_coluna = atual[1] + delta_coluna
+                        vizinho_linha = atual_linha + delta_linha
+                        vizinho_coluna = atual_coluna + delta_coluna
 
-                        if (
-                            nova_linha < 0
-                            or nova_linha >= altura
-                            or nova_coluna < 0
-                            or nova_coluna >= largura
-                        ):
+                        if not (0 <= vizinho_linha < altura and 0 <= vizinho_coluna < largura):
                             continue
 
-                        if bordas[nova_linha, nova_coluna] == 0 or visitados[nova_linha, nova_coluna]:
+                        if bordas[vizinho_linha, vizinho_coluna] == 0:
                             continue
 
-                        visitados[nova_linha, nova_coluna] = True
-                        fila.append((nova_linha, nova_coluna))
+                        if visitados[vizinho_linha, vizinho_coluna]:
+                            continue
+
+                        visitados[vizinho_linha, vizinho_coluna] = True
+                        fila.append((vizinho_linha, vizinho_coluna))
 
             componentes.append(componente)
 
     return componentes
 
 
-def _chave_componente(componente: Sequence[Pixel]) -> tuple[int, int, int]:
-    """Ordena componentes de cima para baixo, priorizando os maiores."""
+def _finalizar_segmento_varrido(
+    segmento: Sequence[Pixel],
+    distancia_minima_entre_pontos: float,
+    pontos_minimos_por_segmento: int,
+) -> List[List[Pixel]]:
+    """Aplica reducao minima a um segmento extraido por varredura."""
 
-    linhas = [linha for linha, _ in componente]
-    colunas = [coluna for _, coluna in componente]
-    return (min(linhas), min(colunas), -len(componente))
+    # Remove pontos muito proximos para simplificar o caminho final.
+    segmento_reduzido = _reduzir_rastro(
+        segmento,
+        max(distancia_minima_entre_pontos, 1.0) ** 2,
+    )
 
+    if len(segmento_reduzido) < max(2, pontos_minimos_por_segmento):
+        # Segmentos curtos demais nao compensam um movimento de desenho.
+        return []
 
-def _proximo_pixel_superior_do_componente(
-    componente: Sequence[Pixel],
-    visitados: np.ndarray,
-) -> Pixel | None:
-    """Retorna o pixel nao visitado mais alto e a esquerda do componente."""
-
-    candidatos = [(linha, coluna) for linha, coluna in componente if not visitados[linha, coluna]]
-    if not candidatos:
-        return None
-    candidatos.sort()
-    return candidatos[0]
-
-
-def _seguir_traco(
-    inicio: Pixel,
-    bordas: np.ndarray,
-    visitados: np.ndarray,
-    limite_salto2: int,
-) -> List[Pixel]:
-    """Segue um traco pixel a pixel escolhendo sempre o melhor vizinho local."""
-
-    segmento: List[Pixel] = [inicio]
-    visitados[inicio[0], inicio[1]] = True
-    atual = inicio
-    direcao_anterior = (0, 0)
-
-    while True:
-        proximo = _escolher_proximo_vizinho(
-            atual,
-            bordas,
-            visitados,
-            direcao_anterior,
-            limite_salto2,
-        )
-        if proximo is None:
-            break
-
-        segmento.append(proximo)
-        visitados[proximo[0], proximo[1]] = True
-        direcao_anterior = (proximo[0] - atual[0], proximo[1] - atual[1])
-        atual = proximo
-
-    return segmento
-
-
-def _escolher_proximo_vizinho(
-    atual: Pixel,
-    bordas: np.ndarray,
-    visitados: np.ndarray,
-    direcao_anterior: Pixel,
-    limite_salto2: int,
-) -> Pixel | None:
-    """Escolhe o proximo pixel por conectividade 8 e continuidade direcional."""
-
-    candidatos: List[tuple[tuple[int, int, int, int], Pixel]] = []
-
-    for delta_linha in (-1, 0, 1):
-        for delta_coluna in (-1, 0, 1):
-            if delta_linha == 0 and delta_coluna == 0:
-                continue
-
-            linha = atual[0] + delta_linha
-            coluna = atual[1] + delta_coluna
-
-            if (
-                linha < 0
-                or linha >= bordas.shape[0]
-                or coluna < 0
-                or coluna >= bordas.shape[1]
-            ):
-                continue
-
-            if bordas[linha, coluna] == 0 or visitados[linha, coluna]:
-                continue
-
-            distancia2 = (delta_linha * delta_linha) + (delta_coluna * delta_coluna)
-            if distancia2 > limite_salto2:
-                continue
-
-            # Prioriza continuidade do movimento; em empate, segue ordem raster.
-            penalidade_direcao = abs(delta_linha - direcao_anterior[0]) + abs(delta_coluna - direcao_anterior[1])
-            chave = (penalidade_direcao, distancia2, linha, coluna)
-            candidatos.append((chave, (linha, coluna)))
-
-    if not candidatos:
-        return None
-
-    candidatos.sort(key=lambda item: item[0])
-    return candidatos[0][1]
+    return [segmento_reduzido]
 
 
 def _reduzir_rastro(segmento: Sequence[Pixel], limite_reducao2: float) -> List[Pixel]:
@@ -296,48 +356,17 @@ def _reduzir_rastro(segmento: Sequence[Pixel], limite_reducao2: float) -> List[P
     for linha, coluna in segmento[1:]:
         dl = linha - ul
         dc = coluna - uc
+        # Ignora pontos perto demais do ultimo ponto mantido.
         if (dl * dl + dc * dc) < limite_reducao2:
             continue
         reduzido.append((linha, coluna))
         ul, uc = linha, coluna
 
+    # Garante que o ultimo ponto do traco original nao seja perdido.
     if reduzido[-1] != segmento[-1]:
         reduzido.append(segmento[-1])
 
     return reduzido
-
-
-def _quebrar_saltos_estritos(
-    segmento: Sequence[Pixel],
-    tamanho_minimo: int,
-) -> List[List[Pixel]]:
-    """Quebra um segmento se aparecer qualquer salto nao-8-conectado."""
-
-    if len(segmento) < 2:
-        return []
-
-    segmentos: List[List[Pixel]] = []
-    atual: List[Pixel] = [segmento[0]]
-
-    for linha, coluna in segmento[1:]:
-        ul, uc = atual[-1]
-        dl = abs(linha - ul)
-        dc = abs(coluna - uc)
-
-        # Em um traco valido pixel a pixel, o proximo ponto precisa ser
-        # 8-conectado ao anterior.
-        if dl > 1 or dc > 1:
-            if len(atual) >= tamanho_minimo:
-                segmentos.append(atual)
-            atual = [(linha, coluna)]
-            continue
-
-        atual.append((linha, coluna))
-
-    if len(atual) >= tamanho_minimo:
-        segmentos.append(atual)
-
-    return segmentos
 
 
 def _mapear_para_turtlesim(
@@ -351,6 +380,7 @@ def _mapear_para_turtlesim(
     if not segmentos_pixels:
         return []
 
+    # Descobre o retangulo minimo que envolve o desenho.
     linhas = [linha for segmento in segmentos_pixels for linha, _ in segmento]
     colunas = [coluna for segmento in segmentos_pixels for _, coluna in segmento]
     linha_min = min(linhas)
@@ -363,8 +393,10 @@ def _mapear_para_turtlesim(
 
     escala_x = tamanho_turtlesim / largura_util
     escala_y = tamanho_turtlesim / altura_util
+    # Usa a menor escala para preservar a proporcao e caber na arena.
     escala = min(escala_x, escala_y)
 
+    # Centraliza o desenho dentro da arena do Turtlesim.
     arena = 11.0
     largura_desenhada = largura_util * escala
     altura_desenhada = altura_util * escala
@@ -375,10 +407,12 @@ def _mapear_para_turtlesim(
     for segmento in segmentos_pixels:
         seg: Segmento = []
         for linha, coluna in segmento:
+            # Converte coluna em x e inverte o eixo y da imagem para o mundo do simulador.
             tx = ((coluna - coluna_min) * escala) + offset_x
             ty = ((linha_max - linha) * escala) + offset_y
             seg.append((tx, ty))
         if seg:
+            # Cada item da lista final representa um traco pronto para o draw_node executar.
             segmentos_mundo.append(seg)
 
     return segmentos_mundo

@@ -162,15 +162,11 @@ Esses kernels calculam derivadas aproximadas:
 &emsp;A magnitude e o ângulo do gradiente são calculados depois da aplicação dos filtros de Sobel, e servem para descrever a força e a direção das bordas na imagem.
 Com os valores obtidos pelos filtros de Sobel, calcula-se a **magnitude do gradiente**:
 
-&emsp;$$
-&emsp;M = \sqrt{G_x^2 + G_y^2}
-&emsp;$$
+&emsp;$$M = \sqrt{G_x^2 + G_y^2}$$
 
 &emsp;Ela indica **quão forte é a borda** naquele ponto. Quanto maior a magnitude, maior é a variação de intensidade entre pixels vizinhos e, portanto, maior a probabilidade de existir uma borda real na imagem. Em seguida, calcula-se o **ângulo do gradiente**:
 
-&emsp;$$
-&emsp;\theta = \arctan2(G_y, G_x)
-&emsp;$$
+&emsp;$$ \theta = \arctan2(G_y, G_x)$$
 
 &emsp;Esse ângulo indica a **direção da maior variação de intensidade**. Em outras palavras, ele mostra para que lado a intensidade da imagem está mudando com mais força naquele ponto.
 
@@ -222,13 +218,9 @@ else:
 
 &emsp;No código, esses limiares são calculados a partir do maior valor presente na imagem:
 
-&emsp;$$
-&emsp;\text{limiar\_alto} = \max(\text{img}) \cdot \text{limiar\_alto\_ratio}
-&emsp;$$
+&emsp;$$\text{limiar\_alto} = \max(\text{img}) \cdot \text{limiar\_alto\_ratio}$$
 
-&emsp;$$
-&emsp;\text{limiar\_baixo} = \text{limiar\_alto} \cdot \text{limiar\_baixo\_ratio}
-&emsp;$$
+&emsp;$$\text{limiar\_baixo} = \text{limiar\_alto} \cdot \text{limiar\_baixo\_ratio}$$
 
 &emsp;Depois disso, cada pixel é classificado em uma das três categorias:
 

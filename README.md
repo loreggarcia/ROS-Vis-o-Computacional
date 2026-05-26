@@ -10,6 +10,9 @@ O fluxo do projeto é dividido em três etapas:
 2. `turtle_draw_pkg/turtle_draw_pkg/vision_pipeline.py` lê `edges_final.png` e converte os pixels ativos em segmentos no espaço lógico do `turtlesim`.
 3. `turtle_draw_pkg/turtle_draw_pkg/draw_node.py` percorre esses segmentos no ROS 2, controlando movimento, teleporte e caneta.
 
+## Vídeo 
+Assista o vídeo de explicação nesse link: https://drive.google.com/file/d/1LSr4bB8j1HM-WjMZ6mZKQfm9VChsLs4I/view?usp=sharing
+
 ## Estrutura das pastas
 
 ```text
