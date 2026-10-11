@@ -14,55 +14,21 @@ O fluxo do projeto é dividido em três etapas:
 
 A fotografia do cachorro em `dog.jpg` é a entrada do processamento. O arquivo
 `edges_final.png` contém os pixels de borda selecionados para formar o desenho.
-https://github.com/loreggarcia/ROS-Vis-o-Computacional/tree/main
+
 | Imagem original | Bordas finais (edges) |
 | --- | --- |
 | ![Fotografia original do cachorro](dog.jpg) | ![Bordas do cachorro usadas no desenho](edges_final.png) |
 
 ## Vídeo do projeto do cachorro
 
-<video controls width="640" src="Dog-video.mp4">
-  Seu visualizador não suporta reprodução de vídeo.
-</video>eo.mp4
-README.md
-dog.jpg
-edges_final.png
-processamento.ipynb
-ROS-Vis-o-Computacional
-/
-README.md
-in
-main
+A animação abaixo mostra o vídeo completo acelerado em 4×, sem áudio.
+Clique nela para abrir o MP4 original.
 
-Edit
+[![Demonstração animada do desenho do cachorro](docs/dog-demo.gif)](Dog-video.mp4)
 
-Preview
-Indent mode
+[Assistir ao vídeo completo com áudio](Dog-video.mp4).
 
-Spaces
-Indent size
-
-2
-Line wrap mode
-
-Soft wrap
-Editing README.md file contents
-  1
-  2
-  3
-  4
-  5
-  6
-  7
-  8
-  9
- 10
- 11
- 12
- 13
- 14
- 1
-
+[Assistir à explicação do projeto no Google Drive](https://drive.google.com/file/d/1LSr4bB8j1HM-WjMZ6mZKQfm9VChsLs4I/view?usp=sharing).
 
 ## Processo de criação
 
@@ -125,6 +91,7 @@ Para uma descrição detalhada das funções, consulte o
 ```text
 .
 ├── docs/
+│   ├── dog-demo.gif
 │   └── relatorio_arquitetura.md
 ├── processamento.ipynb
 ├── dog.jpg
@@ -151,7 +118,8 @@ Para uma descrição detalhada das funções, consulte o
 
 - `processamento.ipynb`: concentra as etapas de visão computacional e a validação visual do contorno.
 - `dog.jpg`: imagem de entrada usada no notebook.
-- `Dog-video.mp4`: vídeo do cachorro, disponível pelo link acima.
+- `Dog-video.mp4`: vídeo original do cachorro.
+- `docs/dog-demo.gif`: versão animada e acelerada do vídeo para exibição no README.
 - `edges_final.png`: saída final do notebook, usada como entrada do runtime ROS.
 - `docs/relatorio_arquitetura.md`: relatório explicando o código e as decisões de implementação.
 - `turtle_draw_pkg/package.xml`: metadados e dependências ROS 2 do pacote.
