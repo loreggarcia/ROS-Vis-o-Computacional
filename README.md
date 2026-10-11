@@ -23,7 +23,45 @@ https://github.com/loreggarcia/ROS-Vis-o-Computacional/tree/main
 
 <video controls width="640" src="Dog-video.mp4">
   Seu visualizador não suporta reprodução de vídeo.
-</video>
+</video>eo.mp4
+README.md
+dog.jpg
+edges_final.png
+processamento.ipynb
+ROS-Vis-o-Computacional
+/
+README.md
+in
+main
+
+Edit
+
+Preview
+Indent mode
+
+Spaces
+Indent size
+
+2
+Line wrap mode
+
+Soft wrap
+Editing README.md file contents
+  1
+  2
+  3
+  4
+  5
+  6
+  7
+  8
+  9
+ 10
+ 11
+ 12
+ 13
+ 14
+ 1
 
 
 ## Processo de criação
