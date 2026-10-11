@@ -14,7 +14,7 @@ O fluxo do projeto é dividido em três etapas:
 
 A fotografia do cachorro em `dog.jpg` é a entrada do processamento. O arquivo
 `edges_final.png` contém os pixels de borda selecionados para formar o desenho.
-
+https://github.com/loreggarcia/ROS-Vis-o-Computacional/tree/main
 | Imagem original | Bordas finais (edges) |
 | --- | --- |
 | ![Fotografia original do cachorro](dog.jpg) | ![Bordas do cachorro usadas no desenho](edges_final.png) |
